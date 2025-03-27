@@ -1,0 +1,56 @@
+# Maintainer:  Daniel Cook (DCFUKSURMOM) <danielcook30a@gmail.com>
+
+pkgname=phantomsatellite-gtk2
+pkgver=33.6.1
+pkgrel=1
+pkgdesc="Rebranded but otherwise stock fork of Pale Moon with the intention of being free to distribute ."
+arch=('x86_64')
+url="https://github.com/DCFUKSURMOM/Phantom-Satellite"
+license=('MPL-2.0')
+replaces=('phantomsatellite-gtk3')
+conflicts=('phantomsatellite-gtk3')
+depends=('gtk2' 'dbus-glib' 'desktop-file-utils' 'libxt' 'mime-types' 'alsa-lib'
+         'startup-notification')
+makedepends=('python2' 'unzip' 'zip' 'yasm' 'libpulse' 'git')
+optdepends=('libpulse: PulseAudio audio driver'
+            'ffmpeg: various video and audio support')
+source=("https://github.com/DCFUKSURMOM/Phantom-Satellite/archive/refs/tags/v$pkgver.tar.gz"
+        mozconfig.in)
+sha256sums=('SKIP'
+            'SKIP')
+
+prepare() {
+  echo Copying config...
+  cp ../mozconfig.in Phantom-Satellite-$pkgver/.mozconfig
+}
+
+build() {
+  cd Phantom-Satellite-$pkgver
+  # Remove option not supported by ld.gold to prevent configure failure
+  export LDFLAGS="${LDFLAGS/-Wl,-z,pack-relative-relocs/}"
+  ./mach build
+}
+
+package() {
+  cd Phantom-Satellite-$pkgver/pmbuild
+  make package
+  cd dist
+  install -d "${pkgdir}"/usr/{bin,lib}
+  pwd
+  ls -a
+  cp -r phantomsatellite/ "${pkgdir}/usr/lib/phantomsatellite"
+  ln -s "../lib/phantomsatellite/phantomsatellite" "${pkgdir}/usr/bin/phantomsatellite"
+
+  # icons
+  install -Dm644 phantomsatellite/browser/chrome/icons/default/default16.png \
+    "${pkgdir}/usr/share/icons/hicolor/16x16/apps/phantomsatellite.png"
+  install -Dm644 phantomsatellite/browser/chrome/icons/default/default32.png \
+    "${pkgdir}/usr/share/icons/hicolor/32x32/apps/phantomsatellite.png"
+  install -Dm644 phantomsatellite/browser/chrome/icons/default/default48.png \
+    "${pkgdir}/usr/share/icons/hicolor/48x48/apps/phantomsatellite.png"
+  install -Dm644 phantomsatellite/browser/icons/mozicon128.png \
+    "${pkgdir}/usr/share/icons/hicolor/128x128/apps/phantomsatellite.png"
+
+  # install desktop file
+  install -Dm644 "${srcdir}/Phantom-Satellite-$pkgver/palemoon/branding/unofficial/browser.desktop" "${pkgdir}/usr/share/applications/phantomsatellite.desktop"
+}
