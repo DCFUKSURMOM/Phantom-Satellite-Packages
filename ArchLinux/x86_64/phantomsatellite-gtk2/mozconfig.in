@@ -1,5 +1,4 @@
 mk_add_options MOZ_MAKE_FLAGS="-j3"
-mk_add_options MOZ_OBJDIR=pmbuild
 
 # Set GTK Version to 2 or 3
 _GTK_VERSION=2
@@ -25,6 +24,7 @@ ac_add_options --disable-crashreporter
 ac_add_options --disable-js-shell
 ac_add_options --disable-precompiled-startupcache
 ac_add_options --disable-elf-hack
+ac_add_options --disable-gconf
 
 #optimize for size, remove unused code and data sections
 ac_add_options --enable-optimize="-Os -fdata-sections -ffunction-sections"
