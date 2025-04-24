@@ -1,15 +1,13 @@
 # Maintainer:  Daniel Cook (DCFUKSURMOM) <danielcook30a@gmail.com>
 
-pkgname=phantomsatellite-gtk3
+pkgname=phantomsatellite-gtk2
 pkgver=33.7.0.1
 pkgrel=1
 pkgdesc="Rebranded but otherwise stock fork of Pale Moon with the intention of being free to distribute ."
-arch=('x86_64')
+arch=('powerpc')
 url="https://github.com/DCFUKSURMOM/Phantom-Satellite"
 license=('MPL-2.0')
-replaces=('phantomsatellite-gtk2')
-conflicts=('phantomsatellite-gtk2')
-depends=('gtk3' 'dbus-glib' 'desktop-file-utils' 'libxt' 'mime-types' 'alsa-lib'
+depends=('gtk2' 'dbus-glib' 'desktop-file-utils' 'libxt' 'mime-types' 'alsa-lib'
          'startup-notification')
 makedepends=('python2' 'unzip' 'zip' 'yasm' 'libpulse' 'git')
 optdepends=('libpulse: PulseAudio audio driver'
