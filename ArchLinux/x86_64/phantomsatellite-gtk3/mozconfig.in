@@ -1,4 +1,5 @@
 mk_add_options MOZ_MAKE_FLAGS="-j3"
+mk_add_options MOZ_OBJDIR=pmbuild
 
 # Set GTK Version to 2 or 3
 _GTK_VERSION=3
