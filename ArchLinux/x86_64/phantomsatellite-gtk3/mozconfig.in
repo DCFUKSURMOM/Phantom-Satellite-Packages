@@ -1,4 +1,5 @@
-mk_add_options MOZ_MAKE_FLAGS="-j3"
+mk_add_options MOZ_MAKE_FLAGS="-j5"
+mk_add_options MOZ_OBJDIR=pmbuild
 
 # Set GTK Version to 2 or 3
 # GTK 3 is not recommended because it uses more ram, but I kept this config available so people can still choose
@@ -28,8 +29,8 @@ ac_add_options --disable-elf-hack
 ac_add_options --disable-gconf
 ac_add_options --disable-gold # Disable ld.gold, not required for x86 but done anyways for consistency
 
-# Remove unused function sections, this doesnt work when set globally sadly
-ac_add_options --enable-optimize="-ffunction-sections"
+# Optimize for size and remove unused function sections, these don't work properly when set globally sadly
+ac_add_options --enable-optimize="-Os -ffunction-sections"
 
 export MOZ_PKG_SPECIAL=gtk$_GTK_VERSION
 
@@ -41,6 +42,6 @@ ac_add_options --enable-system-pixman
 ac_add_options --with-system-jpeg
 ac_add_options --enable-system-cairo
 
-# Optimize for generic x86_64 since this should run on any x86_64 CPU, optimize for size, remove unused data sections
-export CFLAGS="-march=x86-64 -mcpu=x86-64 -mtune=generic -Os -fdata-sections"
-export LDFLAGS="-march=x86-64 -mcpu=x86-64 -mtune=generic -Os -fdata-sections"
+# Optimize for generic x86_64 since this should run on any x86_64 CPU, remove unused data sections
+export CFLAGS="-march=x86-64 -mcpu=x86-64 -mtune=generic -fdata-sections"
+export LDFLAGS="-march=x86-64 -mcpu=x86-64 -mtune=generic -fdata-sections"

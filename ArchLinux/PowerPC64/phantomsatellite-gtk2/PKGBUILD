@@ -1,7 +1,7 @@
 # Maintainer:  Daniel Cook (DCFUKSURMOM) <danielcook30a@gmail.com>
 
 pkgname=phantomsatellite-gtk2
-pkgver=33.7.1.1
+pkgver=33.7.2
 pkgrel=1
 pkgdesc="Rebranded but otherwise stock fork of Pale Moon with the intention of being free to distribute ."
 arch=('powerpc64')
@@ -24,8 +24,6 @@ prepare() {
 
 build() {
   cd Phantom-Satellite-$pkgver
-  # Remove option not supported by ld.gold to prevent configure failure
-  export LDFLAGS="${LDFLAGS/-Wl,-z,pack-relative-relocs/}"
   ./mach build
 }
 
