@@ -1,0 +1,86 @@
+# Maintainer:  Daniel Cook (DCFUKSURMOM) <danielcook30a@gmail.com>
+
+pkgname=phantomsatellite-gtk3
+pkgver=33.8.1.2
+pkgrel=1
+pkgdesc="Mostly stock fork of Pale Moon with fixes for PPC and some other small tweaks."
+arch=('i686' 'x86_64' 'powerpc' 'powerpc64' 'powerpc64le')
+url="https://github.com/DCFUKSURMOM/Phantom-Satellite"
+license=('MPL-2.0')
+replaces=('phantomsatellite-gtk2')
+conflicts=('phantomsatellite-gtk2')
+depends=('gtk2' 'dbus-glib' 'desktop-file-utils' 'libxt' 'mime-types' 'libpulse' 'alsa-lib'
+         'startup-notification')
+makedepends=('python2' 'unzip' 'zip' 'yasm' 'libpulse' 'git')
+optdepends=('ffmpeg: various video and audio support')
+source=("https://github.com/DCFUKSURMOM/Phantom-Satellite/archive/refs/tags/v$pkgver.tar.gz"
+        mozconfig.in)
+sha256sums=('SKIP'
+            'SKIP')
+
+prepare() {
+  echo Copying base config to build directory...
+  cp ../mozconfig.in Phantom-Satellite-$pkgver/.mozconfig
+  echo Setting build flags...
+  echo "mk_add_options MOZ_MAKE_FLAGS=\"$MAKEFLAGS\"" >> Phantom-Satellite-$pkgver/.mozconfig
+  echo CPU architecture is $CARCH...
+case "${CARCH}" in
+  powerpc64le)
+  #mcrypto is apparently required for PPC64LE builds, according to a friend anyways, I have not personally tested this...
+  export CFLAGS="$CFLAGS -fdata-sections -mcrypto"
+  export CXXFLAGS="$CXXFLAGS -fdata-sections -mcrypto"
+  export LDFLAGS="$LDFLAGS -fdata-sections -mcrypto"
+  ;;
+  powerpc64)
+  #PPC64 builds segfault on CPUs older than 2013 if mcrypto is enabled...
+  export CFLAGS="$CFLAGS -fdata-sections -mno-crypto"
+  export CXXFLAGS="$CXXFLAGS -fdata-sections -mno-crypto"
+  export LDFLAGS="$LDFLAGS -fdata-sections -mno-crypto"
+  ;;
+  powerpc)
+  #In theory PS should be able to run on as low as the PPC 604e, which is the minimum for ArchPower, but anything older than the 750 is pushing it...
+  export CFLAGS="$CFLAGS -fdata-sections -mcpu=604e -mtune=750"
+  export CXXFLAGS="$CXXFLAGS -fdata-sections -mcpu=604e -mtune=750"
+  export LDFLAGS="$LDFLAGS -fdata-sections -mcpu=604e -mtune=750"
+  ;;
+  i686)
+  #Pentium 4 is currently the minimum supported x86 CPU for PS, due to the SSE2 requirement...
+  export CFLAGS="$CFLAGS -fdata-sections -mcpu=pentium4 -mtune=generic"
+  export CXXFLAGS="$CXXFLAGS -fdata-sections -mcpu=pentium4 -mtune=generic"
+  export LDFLAGS="$LDFLAGS -fdata-sections -mcpu=pentium4 -mtune=generic"
+  ;;
+  x86_64)
+  #No special flags needed for x86_64, because PS should run on ANY x86_64 CPU, so just use the default flags...
+  export CFLAGS="$CFLAGS -fdata-sections"
+  export CXXFLAGS="$CXXFLAGS -fdata-sections"
+  export LDFLAGS="$LDFLAGS -fdata-sections"
+  ;;
+esac
+}
+
+build() {
+  cd Phantom-Satellite-$pkgver
+  ./mach build
+}
+
+package() {
+  cd Phantom-Satellite-$pkgver/pmbuild
+  make package
+  cd dist
+  install -d "${pkgdir}"/usr/{bin,lib}
+  cp -r phantomsatellite/ "${pkgdir}/usr/lib/phantomsatellite"
+  ln -s "../lib/phantomsatellite/phantomsatellite" "${pkgdir}/usr/bin/phantomsatellite"
+
+  # icons
+  install -Dm644 phantomsatellite/browser/chrome/icons/default/default16.png \
+    "${pkgdir}/usr/share/icons/hicolor/16x16/apps/phantomsatellite.png"
+  install -Dm644 phantomsatellite/browser/chrome/icons/default/default32.png \
+    "${pkgdir}/usr/share/icons/hicolor/32x32/apps/phantomsatellite.png"
+  install -Dm644 phantomsatellite/browser/chrome/icons/default/default48.png \
+    "${pkgdir}/usr/share/icons/hicolor/48x48/apps/phantomsatellite.png"
+  install -Dm644 phantomsatellite/browser/icons/mozicon128.png \
+    "${pkgdir}/usr/share/icons/hicolor/128x128/apps/phantomsatellite.png"
+
+  # install desktop file
+  install -Dm644 "${srcdir}/Phantom-Satellite-$pkgver/palemoon/branding/unofficial/browser.desktop" "${pkgdir}/usr/share/applications/phantomsatellite.desktop"
+}
