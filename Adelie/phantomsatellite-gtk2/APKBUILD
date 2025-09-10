@@ -1,0 +1,132 @@
+# Maintainer: Daniel A. Cook (DCFUKSURMOM) <danielcook30a@gmail.com>
+# Contributor: A. Wilcox <awilfox@adelielinux.org>
+# thanks to A. Wilcox for getting this working - DCFUKSURMOM 
+pkgname=phantomsatellite-gtk2
+pkgver=33.8.2
+pkgrel=0
+pkgdesc="Phantom Satellite web browser (fork of Firefox with PPC support)"
+url=" "
+arch="espresso pmmx ppc ppc64 x86 x86_64"
+#espresso is the PPC 750 based cpu in the Wii-U, pmmx is 32 bit Adelie
+options="!check"  # Disable tests.
+license="MPL-2.0"
+depends=""
+makedepends="alsa-lib-dev bzip2-dev dbus-glib-dev gconf-dev gtk+2.0-dev
+	gtk+3.0-dev hunspell-dev icu-dev libevent-dev libidl-dev
+	libjpeg-turbo-dev libnotify-dev libogg-dev libtheora-dev libvorbis-dev
+	libxt-dev libxcomposite-dev mesa-dev nspr-dev automake libtool
+	pulseaudio-dev sqlite-dev startup-notification-dev autoconf2.13
+	bsd-compat-headers cmd:which openssl-dev sed yasm zip"
+subpackages="$pkgname-dev"
+source="phantom-satellite-$pkgver.tar.gz::https://github.com/DCFUKSURMOM/Phantom-Satellite/archive/refs/tags/v$pkgver.tar.gz
+	mozconfig
+	https://www.python.org/ftp/python/2.7.15/Python-2.7.15.tar.xz
+	phantom-satellite.desktop
+
+	hunspell-manifest.patch
+	"
+builddir="$srcdir/Phantom-Satellite-$pkgver"
+_mozappdir="/usr/lib/${pkgname/-/}-$pkgver"
+# Vendors its own NSS for now until upstream is compatible with latest versions
+somask="libfreeblpriv3.so liblgpllibs.so libmozgtk.so libmozsqlite3.so
+	libnss3.so libnssckbi.so libnssdbm3.so libnssutil3.so libsmime3.so
+	libsoftokn3.so libssl3.so libxul.so"
+ldpath="$_mozappdir"
+
+unpack() {
+	default_unpack
+
+	[ -z $SKIP_PYTHON ] || return 0
+	msg "Killing all remaining hope for humanity and building Python 2..."
+	cd "$srcdir"
+	[ -d python ] && rm -r python
+	mkdir python
+	# 19:39 <+solar> just make the firefox build process build its own py2 copy
+	# 20:03 <calvin> TheWilfox: there's always violence
+	cd Python-2.7.15
+	./configure --prefix="$srcdir/python"
+	make -j $JOBS
+	# 6 tests failed:
+	#    test__locale test_os test_posix test_re test_strptime test_time
+	# make test
+	make -j $JOBS install
+}
+
+prepare() {
+	default_prepare
+
+	cp "$srcdir"/mozconfig "$builddir"/mozconfig
+	echo "ac_add_options --host=\"$CHOST\"" >> "$builddir"/mozconfig
+	echo "ac_add_options --target=\"$CTARGET\"" >> "$builddir"/mozconfig
+	echo "mk_add_options MOZ_MAKE_FLAGS=\"-j$JOBS\"" >> "$builddir"/mozconfig
+	#export CFLAGS="$CFLAGS -O1 -fno-delete-null-pointer-checks -fno-lifetime-dse -fno-schedule-insns2"
+	export LDFLAGS="$LDFLAGS -Wl,-rpath,$_mozappdir"
+
+	# arch-specific configuration
+	case "$CARCH" in
+	pmmx|x86*|arm*)
+		echo "ac_add_options --disable-elf-hack" >> "$builddir"/mozconfig
+		;;
+	espresso|ppc)
+		export LDFLAGS="$LDFLAGS -latomic"
+		;;
+	ppc64)
+		echo "ac_add_options --enable-altivec" >> "$builddir"/mozconfig
+		;;
+	s390x)
+		echo "ac_add_options --disable-startupcache" >> "$builddir"/mozconfig
+		;;
+	esac
+
+	echo "ac_add_options --enable-optimize=\"$CFLAGS\"" >> "$builddir"/mozconfig
+}
+
+build() {
+	export CFLAGS="$CFLAGS -Wno-dangling-pointer -Wno-array-bounds -Wno-comment -Wno-maybe-uninitialized -Wno-misleading-indentation -Wno-multistatement-macros -Wno-stringop-overflow -Wno-unused-function -Wno-unused-value -Wno-ignored-qualifiers -Wno-deprecated-declarations -Wno-implicit-fallthrough -Wno-unused-but-set-variable -Wno-int-in-bool-context -Wno-stringop-overread -Wno-address -Wno-use-after-free"
+	export CXXFLAGS="$CFLAGS -Wno-class-memaccess -Wno-changes-meaning -Wno-subobject-linkage -Wno-return-local-addr -Wno-unused-local-typedefs"
+	export SHELL=/bin/sh
+	export BUILD_OFFICIAL=1
+	export MOZILLA_OFFICIAL=1
+	export USE_SHORT_LIBNAME=1
+	export MACH_BUILD_PYTHON_NATIVE_PACKAGE_SOURCE=system
+	export PATH="$PATH:$srcdir/python/bin"
+	export CXX="/usr/bin/g++ -std=gnu++17"
+
+	# set rpath so linker finds the libs
+	export UNIXCONFDIR="$srcdir"
+
+	./mach configure
+	# parallel make bug hit on gwyn (64 threads)
+	#./mach build -j1 export
+	./mach build
+}
+
+package() {
+	export PATH="$PATH:$srcdir/python/bin"
+	DESTDIR="$pkgdir" ./mach install
+
+	for pngsize in 16 32 48; do
+		install -D -m644 \
+			"palemoon/branding/unofficial/default$pngsize.png" \
+			"$pkgdir"/usr/share/icons/hicolor/${pngsize}x${pngsize}/apps/$pkgname.png
+	done
+
+	install -D -m644 "palemoon/branding/unofficial/mozicon128.png" \
+		"$pkgdir"/usr/share/pixmaps/$pkgname.png
+	install -D -m644 $srcdir/$pkgname.desktop \
+		"$pkgdir"/usr/share/applications/$pkgname.desktop
+}
+
+dev() {
+	mkdir -p "$subpkgdir"/usr/lib "$subpkgdir"/usr/share
+	mv "$pkgdir"/usr/lib/${pkgname/-/}-devel-$pkgver \
+		"$subpkgdir"/usr/lib/
+	mv "$pkgdir"/usr/share/idl "$subpkgdir"/usr/share/
+	default_dev
+}
+
+sha512sums="31551a52f8a0c184a7d4efa8f50605c39f6815489e854c3953d62b5de19a12c72b3a7f725793c2c4d5719d5312e08d63b4e22dbe46247c8639f0ad382dfb9cfa  phantom-satellite-33.8.2.tar.gz
+6e36ad627e440ede766418f024bae78b0888e4a00888c8df32caa0fe6c88c59387c3d00042cfca9e92ea33604743cfb8e042ab30da3a1ecf1cae8875cdfc4b37  mozconfig
+27ea43eb45fc68f3d2469d5f07636e10801dee11635a430ec8ec922ed790bb426b072da94df885e4dfa1ea8b7a24f2f56dd92f9b0f51e162330f161216bd6de6  Python-2.7.15.tar.xz
+cfbcdc3cf1b3d6d28edaae5b46fc8ccd51ed443b471942feaf6965e9121dc87084847dbf40d07527081875b8c322af6a5d7a71b0af26eabb18faaf3a9e3aba00  phantom-satellite.desktop
+fd78d9114a3047cdb0c5fc7db711197f123195408352c5959579bade4e40aaf07b5954746d885f7e3d91ca484227c0698a5c7c9a11a188e546d8b64d59e9d2a5  hunspell-manifest.patch"
