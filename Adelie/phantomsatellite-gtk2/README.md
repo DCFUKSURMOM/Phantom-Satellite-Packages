@@ -1,0 +1,1 @@
+Thanks to Anna Wilcox (the maintainer of Adelie Linux) for getting this working
